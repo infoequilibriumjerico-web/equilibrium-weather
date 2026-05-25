@@ -36,12 +36,7 @@ page        = 0
 
 while True:
     page += 1
-    page_url = (
-        f"https://api.ambientweather.net/v1/devices/{exact_mac}/data"
-        f"?apiKey={api_key}&applicationKey={app_key}"
-        f"&endDate={end_ms}&limit=288"
-    )
-    print(f"Page {page} → {time.strftime('%Y-%m-%d', time.gmtime(end_ms/1000))}...", flush=True)
+page_url = f"https://api.ambientweather.net/v1/devices/{exact_mac}/data?apiKey={api_key}&applicationKey={app_key}&endDate={end_ms}&limit=288"
 
     data = fetch_url(page_url)
     if not data:
