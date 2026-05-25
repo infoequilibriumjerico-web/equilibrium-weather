@@ -1,0 +1,31 @@
+name: Fetch Rainfall History
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch rainfall history from AWN
+        env:
+          AWN_API_KEY: ${{ secrets.AWN_API_KEY }}
+          AWN_APP_KEY: ${{ secrets.AWN_APP_KEY }}
+          AWN_MAC: ${{ secrets.AWN_MAC }}
+        run: python3 fetch_rainfall.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rainfall-cache.json
+          git diff --staged --quiet || git commit -m "rainfall cache update $(date -u '+%Y-%m-%d')"
+          git push
