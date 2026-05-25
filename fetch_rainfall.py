@@ -1,7 +1,6 @@
 import json, os, time
 import urllib.request
 import urllib.error
-import urllib.parse
 
 api_key = os.environ["AWN_API_KEY"].strip()
 app_key = os.environ["AWN_APP_KEY"].strip()
@@ -35,9 +34,8 @@ page = 0
 
 while True:
     page += 1
-    encoded_mac = urllib.parse.quote(exact_mac, safe='')
-    page_url = "https://api.ambientweather.net/v1/devices/" + encoded_mac + "/data?apiKey=" + api_key + "&applicationKey=" + app_key + "&endDate=" + str(end_ms) + "&limit=288"
-    print(f"Page {page} - {time.strftime('%Y-%m-%d', time.gmtime(end_ms/1000))}...", flush=True)
+    page_url = "https://api.ambientweather.net/v1/devices/" + exact_mac + "/data?apiKey=" + api_key + "&applicationKey=" + app_key + "&endDate=" + str(end_ms) + "&limit=288"
+    print("Fetching: " + page_url[:100])
     data = fetch_url(page_url)
     if not data:
         print("No more data.")
