@@ -12,13 +12,13 @@ def fetch_url(url, retries=3):
             with urllib.request.urlopen(url) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code == 429:
+            if e.code in (429, 404):
                 wait = 65 * (attempt + 1)
-                print(f"Rate limited (429), waiting {wait}s before retry {attempt+1}/{retries}...")
+                print(f"HTTP {e.code}, waiting {wait}s before retry {attempt+1}/{retries}...")
                 time.sleep(wait)
             else:
                 raise
-    raise Exception(f"Failed after {retries} retries due to rate limiting")
+    raise Exception(f"Failed after {retries} retries")
 
 url = "https://api.ambientweather.net/v1/devices?apiKey=" + api_key + "&applicationKey=" + app_key
 devices = fetch_url(url)
@@ -35,7 +35,7 @@ page = 0
 while True:
     page += 1
     page_url = "https://api.ambientweather.net/v1/devices/" + exact_mac + "/data?apiKey=" + api_key + "&applicationKey=" + app_key + "&endDate=" + str(end_ms) + "&limit=288"
-    print("Fetching: " + page_url[:100])
+    print(f"Page {page} - {time.strftime('%Y-%m-%d', time.gmtime(end_ms/1000))}...", flush=True)
     data = fetch_url(page_url)
     if not data:
         print("No more data.")
