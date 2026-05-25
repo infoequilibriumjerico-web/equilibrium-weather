@@ -4,7 +4,7 @@ import urllib.error
 
 api_key = os.environ["AWN_API_KEY"].strip()
 app_key = os.environ["AWN_APP_KEY"].strip()
-mac     = os.environ["AWN_MAC"].strip().upper()
+mac     = os.environ["AWN_MAC"].strip().upper()    
 
 def fetch_url(url, retries=3):
     for attempt in range(retries):
