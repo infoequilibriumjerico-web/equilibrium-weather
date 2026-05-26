@@ -2,7 +2,8 @@ name: Fetch Weather Data
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/15 * * * *'   # every 15 minutes
+    - cron: '0 12 1 * *'     # keepalive: 1st of every month at noon UTC
   workflow_dispatch:
 
 jobs:
@@ -15,12 +16,35 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Fetch and save weather data
+      - name: Fetch current conditions from AWN
         env:
           AWN_API_KEY: ${{ secrets.AWN_API_KEY }}
           AWN_APP_KEY: ${{ secrets.AWN_APP_KEY }}
           AWN_MAC: ${{ secrets.AWN_MAC }}
-        run: python3 fetch_weather.py
+        run: |
+          curl -s "https://api.ambientweather.net/v1/devices?apiKey=$AWN_API_KEY&applicationKey=$AWN_APP_KEY" -o devices.json
+          cat devices.json | python3 -c "
+import json, os, sys, time
+devices = json.load(sys.stdin)
+mac = os.environ['AWN_MAC'].upper()
+device = next((d for d in devices if d.get('macAddress','').upper() == mac), devices[0])
+data = device.get('lastData', {})
+output = {
+  'updatedAt': int(time.time() * 1000),
+  'station': device.get('info', {}).get('name', 'Weather Station'),
+  'mac': device.get('macAddress', ''),
+  'current': data
+}
+json.dump(output, open('weather-data.json','w'))
+print('Saved weather-data.json for', output['station'])
+"
+
+      - name: Keepalive commit (runs on 1st of month to prevent GitHub from pausing the schedule)
+        run: |
+          if [ "$(date -u +%d)" = "01" ] && [ "$(date -u +%H)" = "12" ]; then
+            date -u '+%Y-%m-%d %H:%M UTC' > keepalive.txt
+            git add keepalive.txt
+          fi
 
       - name: Commit and push
         run: |
