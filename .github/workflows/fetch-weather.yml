@@ -21,7 +21,7 @@ jobs:
           AWN_APP_KEY: ${{ secrets.AWN_APP_KEY }}
           AWN_MAC: ${{ secrets.AWN_MAC }}
         run: |
-          curl -s "https://api.ambientweather.net/v1/devices?apiKey=${AWN_API_KEY}&applicationKey=${AWN_APP_KEY}" -o devices.json
+          curl -s "https://api.ambientweather.net/v1/devices?apiKey=$AWN_API_KEY&applicationKey=$AWN_APP_KEY" -o devices.json
           python3 << 'PYEOF'
           import json, os, sys, time
           devices = json.load(open('devices.json'))
