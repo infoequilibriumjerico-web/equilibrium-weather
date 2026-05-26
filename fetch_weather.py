@@ -1,25 +1,53 @@
-import json, os, time
-import urllib.request
+name: Fetch Weather Data
 
-api_key = os.environ["AWN_API_KEY"]
-app_key = os.environ["AWN_APP_KEY"]
-mac     = os.environ["AWN_MAC"].upper()
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
-url = f"https://api.ambientweather.net/v1/devices?apiKey={api_key}&applicationKey={app_key}"
-with urllib.request.urlopen(url) as r:
-    devices = json.load(r)
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-device = next((d for d in devices if d.get("macAddress","").upper() == mac), devices[0])
-data   = device.get("lastData", {})
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-output = {
-    "updatedAt": int(time.time() * 1000),
-    "station":   device.get("info", {}).get("name", "Weather Station"),
-    "mac":       device.get("macAddress", ""),
-    "current":   data
-}
+      - name: Fetch current conditions from AWN
+        env:
+          AWN_API_KEY: ${{ secrets.AWN_API_KEY }}
+          AWN_APP_KEY: ${{ secrets.AWN_APP_KEY }}
+          AWN_MAC: ${{ secrets.AWN_MAC }}
+        run: |
+          curl -s "https://api.ambientweather.net/v1/devices?apiKey=${AWN_API_KEY}&applicationKey=${AWN_APP_KEY}" -o devices.json
+          python3 << 'PYEOF'
+          import json, os, sys, time
+          devices = json.load(open('devices.json'))
+          mac = os.environ['AWN_MAC'].strip().upper()
+          device = next((d for d in devices if d.get('macAddress','').upper() == mac), devices[0])
+          data = device.get('lastData', {})
+          output = {
+            'updatedAt': int(time.time() * 1000),
+            'station': device.get('info', {}).get('name', 'Weather Station'),
+            'mac': device.get('macAddress', ''),
+            'current': data
+          }
+          json.dump(output, open('weather-data.json', 'w'))
+          print('Saved weather-data.json for', output['station'])
+          PYEOF
 
-with open("weather-data.json", "w") as f:
-    json.dump(output, f)
+      - name: Keepalive (write timestamp on 1st of month to keep schedule active)
+        run: |
+          if [ "$(date -u +%d)" = "01" ]; then
+            echo "keepalive $(date -u '+%Y-%m-%d')" > keepalive.txt
+          fi
 
-print(f"Saved weather-data.json for {output['station']}")
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add weather-data.json keepalive.txt 2>/dev/null || git add weather-data.json
+          git diff --staged --quiet || git commit -m "weather update $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
